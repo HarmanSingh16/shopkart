@@ -1,33 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getCurrentCustomer, logoutCustomer } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState(null);
+  const { customer, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const { cartCount } = useCart();
-
-  useEffect(() => {
-    let active = true;
-    getCurrentCustomer()
-      .then((profile) => {
-        if (active) setCustomer(profile);
-      })
-      .catch(() => {
-        if (active) setCustomer(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function handleLogout() {
     setLoggingOut(true);
     try {
-      await logoutCustomer();
-      setCustomer(null);
+      await logout();
       navigate("/login", { replace: true });
     } finally {
       setLoggingOut(false);
@@ -35,24 +20,61 @@ export default function Navbar() {
   }
 
   return (
-    <header className="navbar">
-      <Link className="brand" to={customer ? "/home" : "/login"}>
-        ShopKart
-      </Link>
-      <div className="navbar-actions">
-        <Link className="products-link" to="/products">Products</Link>
-        {customer && <Link className="wishlist-link" to="/wishlist">Wishlist</Link>}
-        {customer && <Link className="orders-link" to="/orders">My Orders</Link>}
-        {customer && <Link className="cart-link" to="/cart">Cart ({cartCount})</Link>}
+    <header className="clinical-header navbar">
+      <div className="clinical-logo-wrap">
+        <Link className="clinical-logo brand hover-underline" to={customer ? "/home" : "/products"}>
+          ShopKart
+        </Link>
+        <span className="clinical-logo-tag">PRECISION ELECTRONICS</span>
+      </div>
+
+      <nav className="clinical-nav navbar-actions" aria-label="Main navigation">
+        <Link className="clinical-nav-link products-link hover-underline" to="/products">
+          Products
+        </Link>
+        {customer && (
+          <Link className="clinical-nav-link wishlist-link hover-underline" to="/wishlist">
+            Wishlist
+          </Link>
+        )}
+        {customer && (
+          <Link className="clinical-nav-link orders-link hover-underline" to="/orders">
+            My Orders
+          </Link>
+        )}
+      </nav>
+
+      <div className="clinical-header-actions">
+        <Link className="clinical-cart-link cart-link hover-underline" to="/cart">
+          Cart ({cartCount})
+        </Link>
+
         {customer ? (
-          <button type="button" className="button button-secondary" onClick={handleLogout} disabled={loggingOut}>
+          <button
+            type="button"
+            className="button button-secondary clinical-auth-btn"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            style={{ padding: "6px 12px", fontSize: "11px" }}
+          >
             {loggingOut ? "Logging out..." : "Logout"}
           </button>
         ) : (
-          <>
-            <Link className="button button-secondary auth-nav-link" to="/login">Log in</Link>
-            <Link className="button button-secondary auth-nav-link" to="/register">Register</Link>
-          </>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Link
+              className="clinical-auth-link hover-underline auth-nav-link"
+              to="/login"
+            >
+              Log in
+            </Link>
+            <span style={{ color: "#D4CCC4" }}>|</span>
+            <Link
+              className="clinical-auth-link hover-underline auth-nav-link"
+              to="/register"
+            >
+              Register
+            </Link>
+          </div>
         )}
       </div>
     </header>

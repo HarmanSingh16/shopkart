@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
 import FormField from "../components/FormField";
-import { createPaymentOrder, getCurrentCustomer, verifyPayment } from "../services/api";
+import { createPaymentOrder, verifyPayment } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 const initialForm = {
@@ -56,33 +56,33 @@ function validate(form) {
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const { customer } = useAuth();
   const { cartItems, cartLoading, subtotal, refreshCart } = useCart();
-  const [authLoading, setAuthLoading] = useState(true);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => ({
+    ...initialForm,
+    fullName: customer?.fullName || "",
+    phone: customer?.phone || "",
+  }));
   const [errors, setErrors] = useState({});
   const [placing, setPlacing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    let active = true;
-    getCurrentCustomer()
-      .then(() => {
-        if (active) setAuthLoading(false);
-      })
-      .catch(() => {
-        if (active) navigate("/login", { replace: true });
-      });
-    return () => {
-      active = false;
-    };
-  }, [navigate]);
+    if (customer) {
+      setForm((prev) => ({
+        ...prev,
+        fullName: prev.fullName || customer.fullName || "",
+        phone: prev.phone || customer.phone || "",
+      }));
+    }
+  }, [customer]);
 
   useEffect(() => {
-    if (authLoading || cartLoading) return;
+    if (cartLoading) return;
     if (cartItems.length === 0) {
       navigate("/cart", { replace: true });
     }
-  }, [authLoading, cartLoading, cartItems.length, navigate]);
+  }, [cartLoading, cartItems.length, navigate]);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -160,85 +160,104 @@ export default function Checkout() {
     }
   }
 
-  if (authLoading || cartLoading) {
-    return <main className="loading-page">Loading...</main>;
+  if (cartLoading) {
+    return (
+      <main className="products-page">
+        <p className="products-state">Loading checkout...</p>
+      </main>
+    );
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="products-page">
-        <section className="products-content checkout-page" aria-labelledby="checkout-title">
-          <p className="eyebrow">Almost there</p>
-          <h1 id="checkout-title">Checkout</h1>
+    <main className="products-page">
+      <section className="products-content checkout-page" aria-labelledby="checkout-title">
+        <p className="eyebrow">CHECKOUT // ORDER DETAILS</p>
+        <h1 id="checkout-title" className="serif-heading">Checkout</h1>
 
-          <section className="order-summary" aria-label="Order summary">
-            <h2>Order Summary</h2>
-            {cartItems.map((item) => (
-              <p key={item.product._id}>
-                {item.product.name} × {item.quantity}{" "}
-                <strong>{formatPrice(item.product.price * item.quantity)}</strong>
-              </p>
-            ))}
-            <p>
-              Total: <strong>{formatPrice(subtotal)}</strong>
-            </p>
-          </section>
-
-          <form className="checkout-form" onSubmit={handleSubmit} noValidate>
-            <h2>Shipping Address</h2>
-            <FormField
-              label="Full Name"
-              name="fullName"
-              value={form.fullName}
-              onChange={handleChange}
-              error={errors.fullName}
-            />
-            <FormField
-              label="Phone"
-              name="phone"
-              type="tel"
-              value={form.phone}
-              onChange={handleChange}
-              error={errors.phone}
-            />
-            <FormField
-              label="Address Line 1"
-              name="addressLine1"
-              value={form.addressLine1}
-              onChange={handleChange}
-              error={errors.addressLine1}
-            />
-            <FormField
-              label="City"
-              name="city"
-              value={form.city}
-              onChange={handleChange}
-              error={errors.city}
-            />
-            <FormField
-              label="State"
-              name="state"
-              value={form.state}
-              onChange={handleChange}
-              error={errors.state}
-            />
-            <FormField
-              label="Pincode"
-              name="pincode"
-              value={form.pincode}
-              onChange={handleChange}
-              error={errors.pincode}
-            />
-            {errorMessage && (
-              <p className="form-error" role="alert">{errorMessage}</p>
-            )}
-            <button className="button" type="submit" disabled={placing}>
-              {placing ? "Placing order..." : "Place Order"}
-            </button>
-          </form>
+        <section className="order-summary" aria-label="Order summary">
+          <h2 className="serif-heading">Order Summary</h2>
+          {cartItems.map((item) => (
+            <div
+              key={item.product._id}
+              style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}
+            >
+              <span>
+                {item.product.name} × {item.quantity}
+              </span>
+              <strong className="tabular-nums">
+                {formatPrice(item.product.price * item.quantity)}
+              </strong>
+            </div>
+          ))}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              borderTop: "1px solid var(--border-clinical)",
+              paddingTop: "12px",
+              marginTop: "8px",
+            }}
+          >
+            <span>Total Payable:</span>
+            <strong className="tabular-nums" style={{ fontSize: "1.1rem" }}>
+              {formatPrice(subtotal)}
+            </strong>
+          </div>
         </section>
-      </main>
-    </>
+
+        <form className="checkout-form" onSubmit={handleSubmit} noValidate>
+          <h2 className="serif-heading">Shipping Address</h2>
+          <FormField
+            label="Full Name"
+            name="fullName"
+            value={form.fullName}
+            onChange={handleChange}
+            error={errors.fullName}
+          />
+          <FormField
+            label="Phone"
+            name="phone"
+            type="tel"
+            value={form.phone}
+            onChange={handleChange}
+            error={errors.phone}
+          />
+          <FormField
+            label="Address Line 1"
+            name="addressLine1"
+            value={form.addressLine1}
+            onChange={handleChange}
+            error={errors.addressLine1}
+          />
+          <FormField
+            label="City"
+            name="city"
+            value={form.city}
+            onChange={handleChange}
+            error={errors.city}
+          />
+          <FormField
+            label="State"
+            name="state"
+            value={form.state}
+            onChange={handleChange}
+            error={errors.state}
+          />
+          <FormField
+            label="Pincode"
+            name="pincode"
+            value={form.pincode}
+            onChange={handleChange}
+            error={errors.pincode}
+          />
+          {errorMessage && (
+            <p className="form-error" role="alert">{errorMessage}</p>
+          )}
+          <button className="button" type="submit" disabled={placing}>
+            {placing ? "Placing order..." : "Place Order"}
+          </button>
+        </form>
+      </section>
+    </main>
   );
 }

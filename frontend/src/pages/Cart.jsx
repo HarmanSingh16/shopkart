@@ -1,8 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
 import CartItem from "../components/CartItem";
-import { getCurrentCustomer } from "../services/api";
 import { useCart } from "../context/CartContext";
 
 function formatPrice(price) {
@@ -15,8 +12,6 @@ function formatPrice(price) {
 
 export default function Cart() {
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const {
     cartItems,
     cartLoading,
@@ -27,23 +22,6 @@ export default function Cart() {
     updateQuantity,
     removeFromCart,
   } = useCart();
-
-  useEffect(() => {
-    let active = true;
-    getCurrentCustomer()
-      .then((profile) => {
-        if (active) setCustomer(profile);
-      })
-      .catch(() => {
-        if (active) navigate("/login", { replace: true });
-      })
-      .finally(() => {
-        if (active) setAuthLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [navigate]);
 
   async function handleUpdate(productId, nextQuantity) {
     try {
@@ -65,27 +43,20 @@ export default function Cart() {
     navigate("/checkout");
   }
 
-  if (authLoading) {
-    return <main className="loading-page">Loading your account...</main>;
-  }
-
-  if (!customer) return null;
-
   const totalUnits = cartItems.reduce((n, i) => n + i.quantity, 0);
 
   return (
-    <main className="home-page">
-      <Navbar />
+    <main className="products-page">
       <section className="products-content cart-page" aria-labelledby="cart-title">
-        <p className="eyebrow">Ready to check out</p>
-        <h1 id="cart-title">My Cart</h1>
+        <p className="eyebrow">YOUR CART // READY TO CHECKOUT</p>
+        <h1 id="cart-title" className="serif-heading">My Cart</h1>
 
         {cartLoading && <p className="products-state">Loading your cart...</p>}
 
         {!cartLoading && cartError && (
           <div className="products-state" role="alert">
             <p>Unable to load your cart.</p>
-            <button type="button" className="button button-secondary" onClick={refreshCart}>
+            <button type="button" className="button button-secondary" onClick={refreshCart} style={{ marginTop: "12px" }}>
               Try Again
             </button>
           </div>
@@ -93,8 +64,8 @@ export default function Cart() {
 
         {!cartLoading && !cartError && cartItems.length === 0 && (
           <div className="products-state">
-            <p>Your cart is empty 🛒</p>
-            <p>Looks like you haven't added anything yet.</p>
+            <p style={{ fontSize: "16px", marginBottom: "8px" }}>Your cart is empty.</p>
+            <p style={{ marginBottom: "20px" }}>Looks like you haven't added any products yet.</p>
             <Link className="button" to="/products">Browse Products</Link>
           </div>
         )}
@@ -115,11 +86,17 @@ export default function Cart() {
             </section>
 
             <div className="order-summary" aria-label="Order summary">
-              <h2>Order Summary</h2>
-              <p>Items: <strong>{totalUnits}</strong></p>
-              <p>Subtotal: <strong>{formatPrice(subtotal)}</strong></p>
+              <h2 className="serif-heading">Order Summary</h2>
+              <p style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Items Count:</span>
+                <strong className="tabular-nums">{totalUnits}</strong>
+              </p>
+              <p style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Subtotal:</span>
+                <strong className="tabular-nums">{formatPrice(subtotal)}</strong>
+              </p>
               <button type="button" className="button checkout-button" onClick={handleCheckout}>
-                Proceed to Checkout
+                Proceed to Checkout →
               </button>
             </div>
           </>

@@ -8,41 +8,73 @@ function formatPrice(price) {
   }).format(price);
 }
 
-export default function ProductCard({ product, inWishlist, onToggle, onAddToCart, addingToCart }) {
+export default function ProductCard({
+  product,
+  inWishlist,
+  onToggle,
+  onAddToCart,
+  addingToCart,
+}) {
   const showWishlist = typeof onToggle === "function";
   const showAddToCart = typeof onAddToCart === "function";
 
   return (
     <article className="product-card">
-      <img className="product-image" src={product.image} alt={product.name} />
+      <div className="product-card-media">
+        <img
+          className="product-image clinical-image"
+          src={product.image}
+          alt={product.name}
+          loading="lazy"
+        />
+      </div>
+
       <div className="product-card-content">
-        <h2>{product.name}</h2>
         <p className="product-category">{product.category}</p>
-        <p className="product-price">{formatPrice(product.price)}</p>
+        <h2 className="serif-heading">{product.name}</h2>
+        <p className="product-price tabular-nums">{formatPrice(product.price)}</p>
         <p className={product.stock > 0 ? "stock-available" : "stock-empty"}>
-          {product.stock > 0 ? `${product.stock} units left` : "Out of stock"}
+          {product.stock > 0
+            ? `${product.stock} units available`
+            : "Currently depleted"}
         </p>
-        {showWishlist && (
-          <button
-            type="button"
-            className={`button wishlist-toggle ${inWishlist ? "wishlist-toggle-active" : ""}`}
-            onClick={() => onToggle(product._id, inWishlist ? "remove" : "add")}
-            aria-pressed={Boolean(inWishlist)}
+
+        <div className="product-card-actions">
+          {showAddToCart && (
+            <button
+              type="button"
+              className="button add-to-cart"
+              onClick={() => onAddToCart(product._id)}
+              disabled={Boolean(addingToCart) || (product.stock ?? 0) <= 0}
+            >
+              {addingToCart
+                ? "Processing..."
+                : (product.stock ?? 0) <= 0
+                ? "Out of Stock"
+                : "Add to Cart"}
+            </button>
+          )}
+
+          {showWishlist && (
+            <button
+              type="button"
+              className={`button wishlist-toggle ${
+                inWishlist ? "wishlist-toggle-active" : ""
+              }`}
+              onClick={() => onToggle(product._id, inWishlist ? "remove" : "add")}
+              aria-pressed={Boolean(inWishlist)}
+            >
+              {inWishlist ? "Saved in Wishlist" : "+ Add to Wishlist"}
+            </button>
+          )}
+
+          <Link
+            className="button button-secondary product-button"
+            to={`/products/${product._id}`}
           >
-            {inWishlist ? "♥ Remove from Wishlist" : "♡ Add to Wishlist"}
-          </button>
-        )}
-        {showAddToCart && (
-          <button
-            type="button"
-            className="button add-to-cart"
-            onClick={() => onAddToCart(product._id)}
-            disabled={Boolean(addingToCart)}
-          >
-            {addingToCart ? "Adding..." : "Add to Cart"}
-          </button>
-        )}
-        <Link className="button product-button" to={`/products/${product._id}`}>View Details</Link>
+            View Details →
+          </Link>
+        </div>
       </div>
     </article>
   );

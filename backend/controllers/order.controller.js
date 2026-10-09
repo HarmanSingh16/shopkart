@@ -169,6 +169,17 @@ async function verifyPayment(req, res) {
     order.razorpayPaymentId = razorpay_payment_id;
     await order.save();
 
+    const bulkOps = order.items.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product },
+        update: { $inc: { stock: -item.quantity } },
+      },
+    }));
+
+    if (bulkOps.length > 0) {
+      await Product.bulkWrite(bulkOps);
+    }
+
     req.user.cart = [];
     await req.user.save();
 

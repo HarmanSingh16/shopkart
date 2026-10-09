@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import Navbar from "../components/Navbar";
-import { getCurrentCustomer, getMyOrder } from "../services/api";
+import { Link, useParams } from "react-router-dom";
+import { getMyOrder } from "../services/api";
 
 function formatPrice(price) {
   return new Intl.NumberFormat("en-IN", {
@@ -34,30 +33,13 @@ function statusClass(status) {
 }
 
 export default function OrderDetails() {
-  const navigate = useNavigate();
   const { id } = useParams();
-  const [authLoading, setAuthLoading] = useState(true);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    getCurrentCustomer()
-      .then(() => {
-        if (active) setAuthLoading(false);
-      })
-      .catch(() => {
-        if (active) navigate("/login", { replace: true });
-      });
-    return () => {
-      active = false;
-    };
-  }, [navigate]);
-
-  useEffect(() => {
-    if (authLoading) return;
     let active = true;
     setLoading(true);
     setNotFound(false);
@@ -82,7 +64,7 @@ export default function OrderDetails() {
     return () => {
       active = false;
     };
-  }, [id, authLoading]);
+  }, [id]);
 
   function loadOrder() {
     setError(false);
@@ -99,108 +81,98 @@ export default function OrderDetails() {
       .finally(() => setLoading(false));
   }
 
-  if (authLoading) {
-    return <main className="loading-page">Loading...</main>;
-  }
-
   if (loading) {
     return (
-      <>
-        <Navbar />
-        <main className="products-page">
-          <p className="products-state">Loading order...</p>
-        </main>
-      </>
+      <main className="products-page">
+        <p className="products-state">Loading order details...</p>
+      </main>
     );
   }
 
   if (notFound) {
     return (
-      <>
-        <Navbar />
-        <main className="products-page">
-          <section className="products-content">
-            <p className="products-state" role="alert">Order not found.</p>
+      <main className="products-page">
+        <section className="products-content">
+          <p className="products-state" role="alert">Order not found.</p>
+          <div style={{ marginTop: "16px", textAlign: "center" }}>
             <Link className="button button-secondary" to="/orders">Back to My Orders</Link>
-          </section>
-        </main>
-      </>
+          </div>
+        </section>
+      </main>
     );
   }
 
   if (error || !order) {
     return (
-      <>
-        <Navbar />
-        <main className="products-page">
-          <section className="products-content">
-            <p className="products-state" role="alert">Unable to load this order.</p>
+      <main className="products-page">
+        <section className="products-content">
+          <p className="products-state" role="alert">Unable to load this order.</p>
+          <div style={{ marginTop: "16px", textAlign: "center" }}>
             <button type="button" className="button button-secondary" onClick={loadOrder}>
               Try Again
             </button>
-          </section>
-        </main>
-      </>
+          </div>
+        </section>
+      </main>
     );
   }
 
   const justPlaced = order.status === "PLACED" && order.paymentStatus === "PAID";
 
   return (
-    <>
-      <Navbar />
-      <main className="products-page">
-        <section className="products-content order-details-page" aria-labelledby="order-title">
-          {justPlaced && (
-            <p className="order-success">✅ Order Placed Successfully</p>
-          )}
-          <p className="eyebrow">Order details</p>
-          <h1 id="order-title">Order #{order._id.slice(-8).toUpperCase()}</h1>
-          <p className="order-meta">Placed on {formatDate(order.createdAt)}</p>
-
-          <p className="order-status-row">
-            Status: <span className={statusClass(order.status)}>{order.status}</span>
-            <span className={statusClass(order.paymentStatus)}>Payment: {order.paymentStatus}</span>
+    <main className="products-page">
+      <section className="products-content order-details-page" aria-labelledby="order-title">
+        {justPlaced && (
+          <p className="order-success" style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--accent-green)", marginBottom: "12px" }}>
+            ✓ ORDER CONFIRMED // PAYMENT RECEIVED
           </p>
+        )}
+        <p className="eyebrow">ORDER RECEIPT // VERIFIED PURCHASE</p>
+        <h1 id="order-title" className="serif-heading">Order #{order._id.slice(-8).toUpperCase()}</h1>
+        <p className="order-meta tabular-nums">Placed on {formatDate(order.createdAt)}</p>
 
-          <section className="order-summary" aria-label="Items">
-            <h2>Items</h2>
-            {(order.items ?? []).map((item) => (
-              <div key={item.product} className="order-item-row">
-                <img className="order-item-image" src={item.image} alt={item.name} />
-                <div className="order-item-content">
-                  <p className="order-item-name">{item.name}</p>
-                  <p>
-                    {item.quantity} × {formatPrice(item.price)} ={" "}
-                    <strong>{formatPrice(item.price * item.quantity)}</strong>
-                  </p>
-                </div>
+        <p className="order-status-row">
+          Status: <span className={statusClass(order.status)}>{order.status}</span>
+          <span className={statusClass(order.paymentStatus)}>Payment: {order.paymentStatus}</span>
+        </p>
+
+        <section className="order-summary" aria-label="Items">
+          <h2 className="serif-heading">Order Items</h2>
+          {(order.items ?? []).map((item) => (
+            <div key={item.product} className="order-item-row">
+              <img className="order-item-image clinical-image" src={item.image} alt={item.name} />
+              <div className="order-item-content">
+                <p className="order-item-name" style={{ fontWeight: "700" }}>{item.name}</p>
+                <p className="tabular-nums" style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                  {item.quantity} × {formatPrice(item.price)} ={" "}
+                  <strong>{formatPrice(item.price * item.quantity)}</strong>
+                </p>
               </div>
-            ))}
-            <p className="order-total">
-              Total: <strong>{formatPrice(order.totalAmount)}</strong>
-            </p>
-          </section>
-
-          <section className="order-summary" aria-label="Shipping address">
-            <h2>Shipping Address</h2>
-            <p>{order.shippingAddress?.fullName}</p>
-            <p>{order.shippingAddress?.addressLine1}</p>
-            <p>
-              {order.shippingAddress?.city}, {order.shippingAddress?.state} —{" "}
-              {order.shippingAddress?.pincode}
-            </p>
-            <p>Phone: {order.shippingAddress?.phone}</p>
-          </section>
-
-          {justPlaced && (
-            <div className="order-details-actions">
-              <Link className="button button-secondary" to="/orders">View My Orders</Link>
-              <Link className="button" to="/products">Continue Shopping</Link>
             </div>
-          )}
+          ))}
+          <p className="order-total" style={{ borderTop: "1px solid var(--border-clinical)", paddingTop: "12px", marginTop: "12px" }}>
+            Total: <strong className="tabular-nums">{formatPrice(order.totalAmount)}</strong>
+          </p>
         </section>
-      </main>
-    </>
+
+        <section className="order-summary" aria-label="Shipping address">
+          <h2 className="serif-heading">Shipping Address</h2>
+          <p><strong>{order.shippingAddress?.fullName}</strong></p>
+          <p>{order.shippingAddress?.addressLine1}</p>
+          <p>
+            {order.shippingAddress?.city}, {order.shippingAddress?.state} —{" "}
+            <span className="tabular-nums">{order.shippingAddress?.pincode}</span>
+          </p>
+          <p className="tabular-nums">Contact: {order.shippingAddress?.phone}</p>
+        </section>
+
+        {justPlaced && (
+          <div className="order-details-actions" style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+            <Link className="button button-secondary" to="/orders">View My Orders</Link>
+            <Link className="button" to="/products">Continue Shopping</Link>
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

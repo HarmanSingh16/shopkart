@@ -5,16 +5,23 @@ import {
   removeFromCart as removeFromCartApi,
   updateCartItem as updateCartItemApi,
 } from "../services/api";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
+  const { customer, loading: authLoading } = useAuth();
   const [cartItems, setCartItems] = useState([]);
-  const [cartLoading, setCartLoading] = useState(true);
+  const [cartLoading, setCartLoading] = useState(false);
   const [cartError, setCartError] = useState(false);
   const [actionId, setActionId] = useState(null);
 
   const refreshCart = useCallback(async () => {
+    if (!customer) {
+      setCartItems([]);
+      setCartLoading(false);
+      return;
+    }
     setCartLoading(true);
     setCartError(false);
     try {
@@ -25,26 +32,18 @@ export function CartProvider({ children }) {
     } finally {
       setCartLoading(false);
     }
-  }, []);
+  }, [customer]);
 
   useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const data = await getCartApi();
-        if (!active) return;
-        setCartItems(data.cart ?? []);
-      } catch {
-        if (!active) return;
-        setCartError(true);
-      } finally {
-        if (active) setCartLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (authLoading) return;
+    if (customer) {
+      refreshCart();
+    } else {
+      setCartItems([]);
+      setCartLoading(false);
+      setCartError(false);
+    }
+  }, [customer, authLoading, refreshCart]);
 
   async function performAction(productId, fn) {
     setActionId(productId);
