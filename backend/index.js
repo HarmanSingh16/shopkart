@@ -19,6 +19,17 @@ function createApp() {
   );
   app.use(express.json());
   app.use(cookieParser());
+
+  // Ensure DB is connected before handling any request (serverless-safe)
+  app.use(async (req, res, next) => {
+    try {
+      await connectDatabase();
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.use("/customers", customerRoutes);
   app.use("/products", productRoutes);
   app.use("/wishlist", wishlistRoutes);
@@ -28,32 +39,44 @@ function createApp() {
   return app;
 }
 
-async function connectDatabase() {
+// Cache the connection across warm invocations
+let connectionPromise = null;
+
+function connectDatabase() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
   if (!process.env.MONGO_URI) {
-    throw new Error("MONGO_URI is required");
+    return Promise.reject(new Error("MONGO_URI is required"));
   }
-
-  await mongoose.connect(process.env.MONGO_URI);
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(process.env.MONGO_URI).catch((err) => {
+      connectionPromise = null; // allow retry on next request
+      throw err;
+    });
+  }
+  return connectionPromise;
 }
 
-async function startServer() {
+const app = createApp();
+
+// Only listen when run directly: `node backend/index.js`
+if (require.main === module) {
   if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is required");
+    console.error("JWT_SECRET is required");
+    process.exit(1);
   }
-
-  await connectDatabase();
-
   const port = process.env.PORT || 5000;
-  createApp().listen(port, () => {
-    console.log(`ShopKart server is running on port ${port}`);
-  });
+  connectDatabase()
+    .then(() => {
+      app.listen(port, () => {
+        console.log(`ShopKart server is running on port ${port}`);
+      });
+    })
+    .catch((error) => {
+      console.error(error.message);
+      process.exit(1);
+    });
 }
 
-
-  startServer().catch((error) => {
-    console.error(error.message);
-    process.exit(1);
-  });
-
-
-module.exports = { createApp, connectDatabase };
+module.exports = app;
+module.exports.createApp = createApp;
+module.exports.connectDatabase = connectDatabase;
